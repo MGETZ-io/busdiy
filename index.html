@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>QR-Code Türöffnung</title>
+    <style>
+        #scanner { position: fixed; bottom: 10px; right: 10px; width: 50px; height: 50px; }
+        #message { position: fixed; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.5); color: white; padding: 5px; }
+        #notification {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            display: none;
+            animation: slideIn 3s forwards;
+        }
+        @keyframes slideIn {
+            0% { bottom: -60px; }
+            100% { bottom: 10px; }
+        }
+        #closingMessage {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 165, 0, 0.8);
+            color: white;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="message">Bitte QR-Code scannen</div>
+    <div id="scanner"></div>
+    <div id="notification">Wenn die Tür sich nicht öffnet, bitte den Technikern Bescheid geben!</div>
+    <div id="closingMessage">Achtung: Tür schließt, bitte zurückbleiben!</div>
+
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script>
+        const messageDiv = document.getElementById('message');
+        const scannerDiv = document.getElementById('scanner');
+        const notificationDiv = document.getElementById('notification');
+        const closingMessageDiv = document.getElementById('closingMessage');
+
+        // Funktion zur Verarbeitung des QR-Codes
+        function handleQRCode(result) {
+            const qrData = result.getText();
+            if (qrData === 'GültigerQRCode') {
+                messageDiv.textContent = 'Tür wird freigegeben';
+                // Hier API-Aufruf zum Öffnen der Tür einfügen (SwitchBot)
+                fetch('https://api.switch-bot.com/v1.0/devices/{deviceId}/commands', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer {API_Token}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ command: 'turnOn' })
+                }).then(() => {
+                    setTimeout(() => {
+                        // Zweiter API-Aufruf zum Schließen der Tür
+                        closingMessageDiv.style.display = 'block'; // Zeige Nachricht, dass die Tür schließt
+                        setTimeout(() => {
+                            fetch('https://api.switch-bot.com/v1.0/devices/{deviceId}/commands', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Bearer {API_Token}',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ command: 'turnOff' })
+                            }).catch(() => {
+                                notificationDiv.style.display = 'block'; // Fehlerbenachrichtigung
+                                setTimeout(() => {
+                                    notificationDiv.style.display = 'none';
+                                }, 5000);
+                            });
+                        }, 3000); // Warten, bevor die Tür geschlossen wird
+                    }, 3000); // Warten, bevor die Tür öffnet
+                }).catch(() => {
+                    // Fehlerbehandlung, wenn der SwitchBot API-Aufruf nicht funktioniert
+                    notificationDiv.style.display = 'block';
+                    setTimeout(() => {
+                        notificationDiv.style.display = 'none';
+                    }, 5000);
+                });
+            } else {
+                messageDiv.textContent = 'QR-Code nicht gültig, Tür wird nicht freigegeben';
+                setTimeout(() => {
+                    location.reload();
+                }, 5000);
+            }
+        }
+
+        // Funktion zum Starten des QR-Codescanners
+        function startScanner() {
+            const html5QrCode = new Html5Qrcode('scanner');
+            html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, handleQRCode)
+                .catch(err => {
+                    console.error('QR-Code Scanner konnte nicht gestartet werden:', err);
+                });
+        }
+
+        startScanner();
+    </script>
+</body>
+</html>
