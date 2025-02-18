@@ -2,112 +2,169 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR-Code Türöffnung</title>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <style>
-        #scanner { position: fixed; bottom: 10px; right: 10px; width: 50px; height: 50px; }
-        #message { position: fixed; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.5); color: white; padding: 5px; }
+        /* Dark-Mode-Design mit Neon-Gloweffects */
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b0f1e;
+            color: white;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Scanner Fenster */
+        #scanner {
+            width: 300px;
+            height: 300px;
+            margin: 40px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 0px 15px cyan;
+        }
+
+        /* Animation für Nachrichten */
+        .message {
+            font-size: 24px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            display: inline-block;
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0px); }
+        }
+
+        /* Warnmeldung */
         #notification {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
             background: rgba(255, 0, 0, 0.8);
-            color: white;
             padding: 15px;
-            font-size: 16px;
-            border-radius: 5px;
+            border-radius: 10px;
+            margin-top: 20px;
             display: none;
-            animation: slideIn 3s forwards;
         }
-        @keyframes slideIn {
-            0% { bottom: -60px; }
-            100% { bottom: 10px; }
-        }
+
+        /* Schließungsanzeige */
         #closingMessage {
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
             background: rgba(255, 165, 0, 0.8);
-            color: white;
             padding: 15px;
-            font-size: 16px;
-            border-radius: 5px;
+            border-radius: 10px;
+            margin-top: 20px;
             display: none;
+        }
+
+        /* Lade-Animation */
+        .loading {
+            width: 40px;
+            height: 40px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid cyan;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div id="message">Bitte QR-Code scannen</div>
-    <div id="scanner"></div>
-    <div id="notification">Wenn die Tür sich nicht öffnet, bitte den Technikern Bescheid geben!</div>
-    <div id="closingMessage">Achtung: Tür schließt, bitte zurückbleiben!</div>
 
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <h1>🚀 QR-Code Türöffnung</h1>
+    <p class="message">Bitte QR-Code scannen...</p>
+    <div id="scanner"></div>
+
+    <div id="notification" class="message">❌ Tür öffnet nicht! Bitte den Technikern Bescheid geben!</div>
+    <div id="closingMessage" class="message">⚠️ Zurückbleiben bitte! Tür schließt!</div>
+
+    <div class="loading"></div>
+
     <script>
-        const messageDiv = document.getElementById('message');
         const scannerDiv = document.getElementById('scanner');
         const notificationDiv = document.getElementById('notification');
         const closingMessageDiv = document.getElementById('closingMessage');
 
-        // Funktion zur Verarbeitung des QR-Codes
-        function handleQRCode(result) {
-            const qrData = result.getText();
-            if (qrData === 'GültigerQRCode') {
-                messageDiv.textContent = 'Tür wird freigegeben';
-                // Hier API-Aufruf zum Öffnen der Tür einfügen (SwitchBot)
-                fetch('https://api.switch-bot.com/v1.0/devices/{deviceId}/commands', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer {API_Token}',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ command: 'turnOn' })
-                }).then(() => {
-                    setTimeout(() => {
-                        // Zweiter API-Aufruf zum Schließen der Tür
-                        closingMessageDiv.style.display = 'block'; // Zeige Nachricht, dass die Tür schließt
+        // Liste gültiger QR-Codes
+        const validQRCodes = ["GültigerQRCode123", "ZugangErlaubt456"];
+
+        function handleQRCode(decodedText) {
+            document.querySelector(".message").textContent = "QR-Code erkannt...";
+            setTimeout(() => {
+                if (validQRCodes.includes(decodedText)) {
+                    document.querySelector(".message").textContent = "✅ Tür wird freigegeben...";
+                    
+                    // API-Aufruf zum Öffnen der Tür
+                    fetch('https://api.switch-bot.com/v1.0/devices/{deviceId}/commands', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer {API_Token}',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ command: 'turnOn' })
+                    }).then(() => {
                         setTimeout(() => {
-                            fetch('https://api.switch-bot.com/v1.0/devices/{deviceId}/commands', {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': 'Bearer {API_Token}',
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ command: 'turnOff' })
-                            }).catch(() => {
-                                notificationDiv.style.display = 'block'; // Fehlerbenachrichtigung
-                                setTimeout(() => {
-                                    notificationDiv.style.display = 'none';
-                                }, 5000);
-                            });
-                        }, 3000); // Warten, bevor die Tür geschlossen wird
-                    }, 3000); // Warten, bevor die Tür öffnet
-                }).catch(() => {
-                    // Fehlerbehandlung, wenn der SwitchBot API-Aufruf nicht funktioniert
-                    notificationDiv.style.display = 'block';
+                            closingMessageDiv.style.display = 'block';
+                            setTimeout(() => {
+                                fetch('https://api.switch-bot.com/v1.0/devices/{deviceId}/commands', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': 'Bearer {API_Token}',
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ command: 'turnOff' })
+                                }).catch(() => {
+                                    notificationDiv.style.display = 'block'; // Fehlerbenachrichtigung
+                                    setTimeout(() => {
+                                        notificationDiv.style.display = 'none';
+                                    }, 5000);
+                                });
+                            }, 3000);
+                        }, 3000);
+                    }).catch(() => {
+                        notificationDiv.style.display = 'block';
+                        setTimeout(() => {
+                            notificationDiv.style.display = 'none';
+                        }, 5000);
+                    });
+                } else {
+                    document.querySelector(".message").textContent = "❌ QR-Code ungültig!";
                     setTimeout(() => {
-                        notificationDiv.style.display = 'none';
+                        location.reload();
                     }, 5000);
-                });
-            } else {
-                messageDiv.textContent = 'QR-Code nicht gültig, Tür wird nicht freigegeben';
-                setTimeout(() => {
-                    location.reload();
-                }, 5000);
-            }
+                }
+            }, 1000);
         }
 
-        // Funktion zum Starten des QR-Codescanners
         function startScanner() {
-            const html5QrCode = new Html5Qrcode('scanner');
-            html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, handleQRCode)
-                .catch(err => {
-                    console.error('QR-Code Scanner konnte nicht gestartet werden:', err);
-                });
+            const html5QrCode = new Html5Qrcode("scanner");
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices.length > 0) {
+                    html5QrCode.start(devices[0].id, { fps: 10, qrbox: 250 }, handleQRCode)
+                        .catch(err => {
+                            console.error("Fehler beim Starten des Scanners:", err);
+                            document.querySelector(".message").textContent = "⚠️ Kamera konnte nicht gestartet werden.";
+                        });
+                } else {
+                    document.querySelector(".message").textContent = "⚠️ Keine Kamera gefunden!";
+                }
+            }).catch(err => {
+                console.error("Kamerazugriff fehlgeschlagen:", err);
+                document.querySelector(".message").textContent = "⚠️ Kamerazugriff verweigert.";
+            });
         }
 
         startScanner();
     </script>
+
 </body>
 </html>
