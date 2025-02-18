@@ -3,25 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR-Code Zutrittskontrolle</title>
+    <title>QR-Code Zugangskontrolle</title>
     <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #111; color: #fff; }
-        #scanner-container { width: 300px; margin: auto; border: 2px solid #00ff00; }
-        #message { margin-top: 10px; font-size: 18px; }
+        /* --- FUTURISTISCHES DESIGN --- */
+        body { 
+            background-color: #0a0a0a; 
+            color: #00ffcc; 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            margin: 0; 
+            padding: 0;
+        }
+        h1 { font-size: 24px; margin-top: 20px; text-transform: uppercase; }
+        #scanner-container { 
+            width: 90%; 
+            max-width: 400px; 
+            margin: auto; 
+            border: 2px solid #00ffcc; 
+            border-radius: 10px; 
+            overflow: hidden;
+        }
+        #message {
+            font-size: 18px; 
+            margin-top: 20px; 
+            font-weight: bold; 
+            transition: opacity 0.5s;
+        }
         .valid { color: #00ff00; }
-        .invalid { color: #ff0000; }
+        .invalid { color: #ff4444; }
+        .notification {
+            position: fixed; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: rgba(0, 0, 0, 0.8); 
+            color: #ffcc00; 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            display: none;
+        }
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        .fade-out { animation: fadeOut 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
     </style>
 </head>
 <body>
+
     <h1>Bitte QR-Code scannen</h1>
     <div id="scanner-container"></div>
     <p id="message">Scanne einen QR-Code...</p>
+    <div id="notification" class="notification">⚠️ Tür öffnet nicht! Bitte den Technikern Bescheid geben.</div>
 
     <script>
-        // Erlaubte QR-Codes
+        // ✅ Liste der gültigen QR-Codes
         const validQRCodes = ["PREMIUM123", "VIP456", "TICKET789"];
-
+        
         function startScanner() {
             const scanner = new Html5Qrcode("scanner-container");
             Html5Qrcode.getCameras().then(devices => {
@@ -31,7 +69,7 @@
                 }
 
                 scanner.start(devices[0].id, { fps: 10, qrbox: 250 }, qrCodeMessage => {
-                    scanner.stop(); // Scanner pausieren
+                    scanner.stop(); // Stoppt den Scanner nach erstem Scan
                     checkQRCode(qrCodeMessage);
                 }).catch(err => console.error("Fehler beim Starten:", err));
             }).catch(err => console.error("Kamera-Zugriff verweigert:", err));
@@ -41,14 +79,36 @@
             const messageBox = document.getElementById("message");
             if (validQRCodes.includes(code)) {
                 messageBox.innerHTML = "<span class='valid'>✅ QR-Code gültig! Tür öffnet...</span>";
-                setTimeout(() => location.reload(), 5000); // Seite neu laden
+                
+                // 🔹 Tür öffnen mit SwitchBot (Simulation)
+                simulateSwitchBotPress(true);
+                
+                // ⚠️ Anzeige "Zurückbleiben bitte" nach 3 Sekunden
+                setTimeout(() => {
+                    messageBox.innerHTML = "<span class='invalid'>🚪 Zurückbleiben bitte!</span>";
+                    setTimeout(() => location.reload(), 2000);
+                }, 3000);
+                
             } else {
                 messageBox.innerHTML = "<span class='invalid'>❌ Ungültiger QR-Code! Zugang verweigert.</span>";
                 setTimeout(() => location.reload(), 5000);
             }
         }
 
+        function simulateSwitchBotPress(success) {
+            if (success) {
+                console.log("✅ SwitchBot ausgelöst! Tür öffnet...");
+            } else {
+                console.log("❌ Fehler beim SwitchBot! Notifikation anzeigen...");
+                const notification = document.getElementById("notification");
+                notification.style.display = "block";
+                notification.classList.add("fade-in");
+                setTimeout(() => notification.classList.add("fade-out"), 4000);
+            }
+        }
+
         startScanner();
     </script>
+
 </body>
 </html>
